@@ -1,0 +1,73 @@
+# Import the libraries
+import cv2
+import numpy as np
+import image_match
+import os
+from datetime import datetime
+
+# Image Loading and Encoding
+path = 'training_files'
+images = []
+Names = []
+myList = os.listdir(path)
+print(myList)
+for cl in myList:
+    curImg = cv2.imread(f'{path}/{cl}')
+    images.append(curImg)
+    Names.append(os.path.splitext(cl)[0])
+print(Names)
+
+
+# Encoding
+def findEncodings(images):
+    encodeList = []
+    for img in images:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        encode = image_match.face_encodings(img)[0]
+        encodeList.append(encode)
+    return encodeList
+
+# main
+def main():
+    encodeListKnown = findEncodings(images)
+    print('Encoding Complete')
+    cap = cv2.VideoCapture(0)
+    cv2.namedWindow('Face Detection')
+    while True:
+        _, img = cap.read()
+        imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
+        # Converting the video to RGB
+        imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
+        facesCurFrame = image_match.face_locations(imgS)
+        encodesCurFrame = image_match.face_encodings(imgS, facesCurFrame)
+
+        # Comparing the encodings
+        for encodeFace, faceLoc in zip(encodesCurFrame, facesCurFrame):
+            matches = image_match.compare_faces(
+                encodeListKnown, encodeFace)
+            faceDis = image_match.face_distance(
+                encodeListKnown, encodeFace)
+            matchIndex = np.argmin(faceDis)
+
+            # If the face matches
+            if matches[matchIndex]:
+                name = Names[matchIndex].split("_")[0].upper()
+                number = Names[matchIndex].split("_")[1]
+                y1, x2, y2, x1 = faceLoc
+                y1, x2, y2, x1 = y1*4, x2*4, y2*4, x1*4
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 4)
+                cv2.rectangle(img, (x1, y2-35), (x2, y2),
+                              (0, 255, 0), cv2.FILLED)
+                cv2.putText(img, name, (x1+6, y2-6),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        # Displaying the video
+        cv2.imshow('Face Detection', img)
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+    # Releasing the video
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
