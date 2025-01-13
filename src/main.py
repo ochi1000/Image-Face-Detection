@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import image_match
 import os
-from datetime import datetime
 
 # Image Loading and Encoding
 path = 'training_files'
